@@ -1,0 +1,31 @@
+popPK FitCheckR uses third-party R packages which may be distributed under different
+licenses. We have listed all of these third party packages and their licenses
+below. However, the most up-to-date information can be found via inspecting
+the library() calls in the application source file (app_mosc_07022026.R).
+
+You must agree to the terms of these licenses, in addition to the popPK FitCheckR
+source code license, in order to use this software.
+
+--------------------------------------------------
+Third party R packages listed by License type
+[Format: Name - URL]
+--------------------------------------------------
+
+MIT / X11 License (or adaptations) (https://www.opensource.org/licenses/MIT)
+  * bslib - https://github.com/rstudio/bslib/blob/main/LICENSE
+  * dplyr - https://github.com/tidyverse/dplyr/blob/main/LICENSE.md
+  * ggplot2 - https://github.com/tidyverse/ggplot2/blob/main/LICENSE.md
+  * htmlwidgets - https://github.com/ramnathv/htmlwidgets/blob/master/LICENSE
+  * plotly - https://github.com/plotly/plotly.R/blob/master/LICENSE
+  * shiny.fluent - https://github.com/Appsilon/shiny.fluent/blob/main/LICENSE
+  * tidyverse - https://github.com/tidyverse/tidyverse/blob/main/LICENSE.md
+
+GPL-3 / GPL-2
+  * DT - https://cran.r-project.org/web/licenses/GPL-3
+  * ggpmisc - https://cran.r-project.org/web/licenses/GPL-2
+  * gridExtra - https://cran.r-project.org/web/licenses/GPL-2
+  * shiny - https://cran.r-project.org/web/licenses/GPL-3
+  * shinyBS - https://cran.r-project.org/web/licenses/GPL-3
+  * shinydashboard - https://cran.r-project.org/web/licenses/GPL-3
+  * stringdist - https://cran.r-project.org/web/licenses/GPL-3
+  * webshot - https://cran.r-project.org/web/licenses/GPL-2
