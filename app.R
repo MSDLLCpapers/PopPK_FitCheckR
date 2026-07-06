@@ -1,11 +1,8 @@
 ### popPK FitCheckR R Shiny App ###
-### Roxy Zhang ###
-### Sep 09 2024 ###
-### Last update in June 2026 ###
-# Restructured UI GOF workflow and Correlation Plots are fully separated tabs
+### Ruilian (Roxy) Zhang ###
+### Last update in July 2026 ###
 
 library(shiny)
-library(shiny.fluent)
 library(shinydashboard)
 library(shinyBS)
 library(bslib)
