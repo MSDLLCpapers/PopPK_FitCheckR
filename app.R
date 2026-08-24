@@ -1,4 +1,4 @@
-### popPK FitCheckR R Shiny App ###
+### PopPK FitCheckR R Shiny App ###
 ### Ruilian (Roxy) Zhang ###
 ### Last update in July 2026 ###
 
@@ -125,7 +125,7 @@ ui <- fluidPage(
 
   div(
     class = "container",
-    div(class = "page-header", h3("popPK FitCheckR")),
+    div(class = "page-header", h3("PopPK FitCheckR")),
     br(),
 
     # Top-level tabs
@@ -149,7 +149,7 @@ ui <- fluidPage(
               Introduction
             </p>
             <p style="margin-top:0;">
-              The <strong>popPK FitCheckR</strong> app automates goodness-of-fit (GOF) diagnostics and
+              The <strong>PopPK FitCheckR</strong> app automates goodness-of-fit (GOF) diagnostics and
               variable correlation analysis for population pharmacokinetic (popPK) models built in NONMEM.
               The app is organized into two main analysis tabs:
               <strong>Goodness of Fit (GOF) Plots</strong> and <strong>Correlation Plots</strong>.
