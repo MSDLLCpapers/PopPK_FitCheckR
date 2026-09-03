@@ -1,6 +1,6 @@
 ### PopPK FitCheckR R Shiny App ###
 ### Ruilian (Roxy) Zhang ###
-### Last update in July 2026 ###
+### Last update in Sep 2026 ###
 
 library(shiny)
 library(shinydashboard)
@@ -253,10 +253,12 @@ ui <- fluidPage(
                   <code>patab</code>, and <code>cotab</code>) are read as whitespace-delimited. All input table files are expected to be generated with
                   the <code>ONEHEADER</code> option in the NONMEM <code>$TABLE</code> record, so that the file
                   contains only a single header row.</li>
-              <li><strong>Variable type auto-detection:</strong> Columns with &ge;12 unique values are
-                  classified as <em>Continuous</em>; those with fewer are classified as <em>Categorical</em>.
-                  This determines whether filter controls appear as a numeric range or a value selector.
-                  Override in <strong>Data Standardization &gt; Variable Type</strong> if needed.</li>
+              <li><strong>Variable type auto-detection:</strong> Each column is automatically classified
+                  as <em>Continuous</em> or <em>Categorical</em> based on two criteria: the column is numeric,
+                  and the number of unique values exceeds 10% of the total number of rows (with a minimum of
+                  10 unique values). Columns that do not meet both criteria are classified as <em>Categorical</em>
+                  by default. This determines whether filter controls appear as a numeric range or a value selector.
+                  Override any assignment in <strong>Data Standardization &gt; Variable Type</strong> if needed.</li>
               <li><strong>Column name auto-matching:</strong> The Column Name mapping uses Jaro-Winkler
                   string similarity to suggest matches (e.g., <code>ipred</code> may match to
                   <code>IPRED</code>). Always verify all mappings before proceeding to GOF Plots.</li>
@@ -320,7 +322,7 @@ ui <- fluidPage(
               div(
                 class = "well",
                 style = "min-height: 600px;",
-                HTML('<p><i>Please make sure columns below are correctly mapped before proceeding to GOF Plot</i></p>'),
+                HTML('<p><i>Please make sure columns below are correctly mapped before proceeding to GOF Plots</i></p>'),
                 br(),
                 fluidRow(
                   column(width = 3, offset = 3,
@@ -366,7 +368,7 @@ ui <- fluidPage(
               class = "well",
               style = "min-height: 600px;",
               fluidRow(
-                column(6, selectInput("gof_type", "GOF type",
+                column(3, selectInput("gof_type", "GOF type",
                                       choices = c("Observed vs. Predicted",
                                                   "Observed vs. Individual Predicted",
                                                   "CWRES vs. Predicted",
@@ -375,13 +377,13 @@ ui <- fluidPage(
               tags$hr(),
               HTML('<h6 style="font-weight: bold;">Grouping and color</h6>'),
               fluidRow(
-                column(6,
+                column(3,
                        selectizeInput("select_stratify", "Stratification",
                                       choices  = NULL, selected = NULL, multiple = TRUE,
                                       options  = list(placeholder = "Optional",
                                                       allowEmptyOption = TRUE,
                                                       plugins = list("remove_button")))),
-                column(6,
+                column(3,
                        selectizeInput("select_color", "Color Stratification",
                                       choices = NULL, selected = "",
                                       options = list(placeholder = "Optional")))
@@ -449,6 +451,11 @@ ui <- fluidPage(
               fileInput("cov_file", label = NULL,
                         buttonLabel = "Browse",
                         accept = ""),
+              checkboxInput("dedup_by_id", "Deduplicate by ID", value = FALSE),
+              tags$div(
+                style = "font-size: 12px; color: #888; margin-top: -20px; margin-bottom: 8px;",
+                "Assumes covariates are time-invariant."
+              ),
               tags$hr(),
               HTML('<h6 style="font-weight: bold;">Select Axes</h6>'),
               selectizeInput("select_cov_x", "X axes",
@@ -487,7 +494,7 @@ ui <- fluidPage(
                        br(), br(),
                        conditionalPanel(
                          condition = "input.plot_type == 'Line plot'",
-                         checkboxInput("display_se", "Display standard error", value = TRUE)
+                         checkboxInput("display_ci", "Display 95% CI", value = TRUE)
                        ))
               ),
               uiOutput("cov_plot_output_ui"),
@@ -514,11 +521,22 @@ server <- function(input, output, session) {
     format(Sys.time(), "%Y%m%d%H%M")
   }
 
+  auto_classify <- function(column_data) {
+    n_unique <- length(unique(column_data))
+    n_total  <- length(column_data)
+    # Continuous only if column is numeric AND unique values exceed 10% of rows (floor of 10)
+    if (is.numeric(column_data) && n_unique > max(10, ceiling(n_total * 0.10))) {
+      "Continuous"
+    } else {
+      "Categorical"
+    }
+  }
+
   get_variable_type <- function(column_name, column_data, input) {
     input_id <- paste0("variable_type_", column_name)
     variable_type <- input[[input_id]]
     if (is.null(variable_type)) {
-      variable_type <- if (length(unique(column_data)) > 12) "Continuous" else "Categorical"
+      variable_type <- auto_classify(column_data)
     }
     return(variable_type)
   }
@@ -564,7 +582,7 @@ server <- function(input, output, session) {
                      inputId  = paste0("variable_type_", var),
                      label    = NULL,
                      choices  = c("Continuous", "Categorical"),
-                     selected = if_else(length(unique(data[[var]])) >= 12, "Continuous", "Categorical"),
+                     selected = auto_classify(data[[var]]),
                      inline   = TRUE
                    ))
           )
@@ -1063,6 +1081,15 @@ server <- function(input, output, session) {
   cov_unfiltered      <- reactiveVal()
   current_file_name_cov <- reactiveVal()
 
+  cov_data <- reactive({
+    req(cov_unfiltered())
+    df <- cov_unfiltered()
+    if (isTRUE(input$dedup_by_id) && "ID" %in% names(df)) {
+      df <- dplyr::distinct(df, ID, .keep_all = TRUE)
+    }
+    df
+  })
+
   processCovFile <- function(fileName, data) {
     current_file_name_cov(fileName)
     cov_unfiltered(data)
@@ -1090,11 +1117,11 @@ server <- function(input, output, session) {
     plot_list <- list()
     for (i in seq_len(nrow(combinations))) {
       if (input$plot_type == "Line plot") {
-        p <- ggplot(data = cov_unfiltered(),
+        p <- ggplot(data = cov_data(),
                     aes_string(x = combinations$x[i], y = combinations$y[i])) +
           geom_point(color = "blue") + theme_bw() +
           xlab(combinations$x[i]) + ylab(combinations$y[i]) +
-          geom_smooth(method = input$regression_type, se = input$display_se)
+          geom_smooth(method = input$regression_type, se = input$display_ci)
         if (input$regression_type == "lm") {
           p <- p + stat_poly_eq(
             aes_string(label = "paste(..eq.label.., ..rr.label.., sep = '~~~')"),
@@ -1102,10 +1129,10 @@ server <- function(input, output, session) {
           )
         }
       } else {
-        p <- ggplot(data = cov_unfiltered(),
+        p <- ggplot(data = cov_data(),
                     aes_string(x = paste0("factor(", combinations$x[i], ")"),
                                y = combinations$y[i])) +
-          geom_point(color = "blue") + geom_boxplot() + theme_bw() +
+          geom_boxplot() + geom_jitter(color = "blue", width = 0.1, size = 1.5, alpha = 0.6) + theme_bw() +
           xlab(combinations$x[i]) + ylab(combinations$y[i])
       }
       plot_list[[i]] <- p
