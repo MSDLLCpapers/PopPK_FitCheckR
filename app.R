@@ -246,13 +246,14 @@ ui <- fluidPage(
               Notes
             </p>
             <ul style="margin-top:0; padding-left:20px; line-height:1.8;">
-              <li><strong>File format:</strong> The first line of each uploaded file is <strong>automatically skipped</strong>,
-                  consistent with the NONMEM output table format (e.g., <code>TABLE NO. 1</code> header).
-                  Any plain-text tabular file is accepted: files with a <code>.csv</code> extension are read as
-                  comma-separated; all others (including extensionless NONMEM tables such as <code>sdtab</code>,
-                  <code>patab</code>, and <code>cotab</code>) are read as whitespace-delimited. All input table files are expected to be generated with
-                  the <code>ONEHEADER</code> option in the NONMEM <code>$TABLE</code> record, so that the file
-                  contains only a single header row.</li>
+              <li><strong>File format:</strong> Plain-text tabular files are supported. NONMEM output tables
+                  (<code>sdtab</code>, <code>patab</code>, <code>cotab</code>, etc.) may be uploaded directly,
+                  as the <code>TABLE NO.</code> title line is detected and excluded automatically.
+                  Comma-separated files exported from other tools are also supported, provided the file carries a
+                  <code>.csv</code> extension and the first row contains the column names. Files without a
+                  <code>.csv</code> extension are read as space- or tab-delimited. NONMEM tables should be generated
+                  with the <code>ONEHEADER</code> option in the <code>$TABLE</code> record so that the file contains
+                  a single header row.</li>
               <li><strong>Variable type auto-detection:</strong> Each column is automatically classified
                   as <em>Continuous</em> or <em>Categorical</em> based on two criteria: the column is numeric,
                   and the number of unique values exceeds 10% of the total number of rows (with a minimum of
@@ -541,6 +542,28 @@ server <- function(input, output, session) {
     return(variable_type)
   }
 
+  # NONMEM writes a "TABLE NO." banner above the header unless NOTITLE is used
+  header_skip <- function(first_line) {
+    if (isTRUE(grepl("^\\s*TABLE NO", first_line, ignore.case = TRUE))) 1 else 0
+  }
+
+  # Extensionless NONMEM tables rule out validating uploads by file extension
+  read_table_file <- function(path, sep, skip) {
+    if (any(readBin(path, "raw", n = 4096) == as.raw(0)))
+      stop("This file is not plain text. Please upload a plain-text data table.")
+
+    no_table_message <- "No readable data table was found in this file. Please upload a plain-text data table."
+
+    data <- tryCatch(
+      read.table(path, header = TRUE, sep = sep, skip = skip),
+      error = function(e) stop(no_table_message)
+    )
+
+    if (ncol(data) < 2 || nrow(data) < 1) stop(no_table_message)
+
+    data
+  }
+
 
   #### File upload GOF ####
 
@@ -551,19 +574,11 @@ server <- function(input, output, session) {
     current_file_name(fileName)
     ext <- tools::file_ext(fileName)
 
-    if (file.exists(data)) {
-      if (tolower(ext) == "csv") {
-        data <- read.table(data, header = TRUE, sep = ",", skip = 1)
-      } else {
-        data <- read.table(data, header = TRUE, skip = 1)
-      }
-    } else {
-      if (tolower(ext) == "csv") {
-        data <- read.table(text = data, header = TRUE, sep = ",", skip = 1)
-      } else {
-        data <- read.table(text = data, header = TRUE, skip = 1)
-      }
-    }
+    # Empty separator is read.table's default for whitespace-delimited NONMEM tables
+    sep <- if (tolower(ext) == "csv") "," else ""
+
+    skip <- header_skip(readLines(data, n = 1))
+    data <- read_table_file(data, sep, skip)
 
     table_unfiltered(data)
 
@@ -624,7 +639,12 @@ server <- function(input, output, session) {
 
   observeEvent(input$table_file, {
     req(input$table_file)
-    processTableFile(input$table_file$name, input$table_file$datapath)
+    tryCatch(
+      processTableFile(input$table_file$name, input$table_file$datapath),
+      error = function(msg) {
+        message(conditionMessage(msg))
+        showNotification(conditionMessage(msg), type = "error", duration = 10)
+      })
   })
 
   #### Filter data ####
@@ -634,20 +654,32 @@ server <- function(input, output, session) {
     filter_ui_list <- lapply(input$select_column, function(selected_column) {
       column_data   <- table_unfiltered()[[selected_column]]
       variable_type <- get_variable_type(selected_column, column_data, input)
+      # Existing values are carried over so adding or removing a column does not reset the other filters
       if (variable_type == "Continuous") {
+        value_range <- range(column_data, na.rm = TRUE)
+        prev_start  <- suppressWarnings(as.numeric(isolate(input[[paste0("filter_start_", selected_column)]])))
+        prev_end    <- suppressWarnings(as.numeric(isolate(input[[paste0("filter_end_",   selected_column)]])))
+        start_value <- if (length(prev_start) == 1 && !is.na(prev_start) &&
+                           prev_start >= value_range[1] && prev_start <= value_range[2]) prev_start else value_range[1]
+        end_value   <- if (length(prev_end) == 1 && !is.na(prev_end) &&
+                           prev_end >= value_range[1] && prev_end <= value_range[2]) prev_end else value_range[2]
         fluidRow(
           column(6, textInput(paste0("filter_start_", selected_column),
                               paste("Start value for", selected_column),
-                              value = min(column_data, na.rm = TRUE))),
+                              value = start_value)),
           column(6, textInput(paste0("filter_end_", selected_column),
                               paste("End value for", selected_column),
-                              value = max(column_data, na.rm = TRUE)))
+                              value = end_value))
         )
       } else {
+        unique_values <- sort(unique(column_data))
+        prev_selected <- isolate(input[[paste0("filter_select_", selected_column)]])
+        # Drop carried-over values that are absent from the current file
+        kept_values   <- intersect(as.character(prev_selected), as.character(unique_values))
         selectizeInput(paste0("filter_select_", selected_column),
                        paste("Select values for", selected_column),
-                       choices  = sort(unique(column_data)),
-                       selected = unique(column_data),
+                       choices  = unique_values,
+                       selected = if (length(kept_values) > 0) kept_values else unique_values,
                        multiple = TRUE)
       }
     })
@@ -673,6 +705,8 @@ server <- function(input, output, session) {
         }
       } else {
         filter_select <- input[[paste0("filter_select_", selected_column)]]
+        # An emptied selection is treated as no filter rather than returning zero rows
+        if (length(filter_select) == 0) next
         data <- data %>% filter(data[[selected_column]] %in% filter_select)
       }
     }
@@ -820,10 +854,10 @@ server <- function(input, output, session) {
         plot_data <- table()
       }
 
-      x_start <- ifelse(!is.na(x_start), x_start, min(table()[[x_var]], table()[[y_var]]))
-      x_end   <- ifelse(!is.na(x_end),   x_end,   max(table()[[x_var]], table()[[y_var]]))
-      y_start <- ifelse(!is.na(y_start), y_start, min(table()[[x_var]], table()[[y_var]]))
-      y_end   <- ifelse(!is.na(y_end),   y_end,   max(table()[[x_var]], table()[[y_var]]))
+      x_start <- ifelse(!is.na(x_start), x_start, min(table()[[x_var]], table()[[y_var]], na.rm = TRUE))
+      x_end   <- ifelse(!is.na(x_end),   x_end,   max(table()[[x_var]], table()[[y_var]], na.rm = TRUE))
+      y_start <- ifelse(!is.na(y_start), y_start, min(table()[[x_var]], table()[[y_var]], na.rm = TRUE))
+      y_end   <- ifelse(!is.na(y_end),   y_end,   max(table()[[x_var]], table()[[y_var]], na.rm = TRUE))
 
       # Bin continuous stratification variables for faceting
       facet_vars <- input$select_stratify
@@ -932,9 +966,9 @@ server <- function(input, output, session) {
         plot_data <- table()
       }
 
-      x_start <- ifelse(!is.na(x_start), x_start, min(table()[[x_var]]))
-      x_end   <- ifelse(!is.na(x_end),   x_end,   max(table()[[x_var]]))
-      y_limit <- max(abs(table()[[y_var]]))
+      x_start <- ifelse(!is.na(x_start), x_start, min(table()[[x_var]], na.rm = TRUE))
+      x_end   <- ifelse(!is.na(x_end),   x_end,   max(table()[[x_var]], na.rm = TRUE))
+      y_limit <- max(abs(table()[[y_var]]), na.rm = TRUE)
       y_start <- ifelse(!is.na(y_start), y_start, -y_limit)
       y_end   <- ifelse(!is.na(y_end),   y_end,    y_limit)
 
@@ -989,7 +1023,7 @@ server <- function(input, output, session) {
         x_range <- x_end - x_start
         y_range <- y_end - y_start
         aspect  <- if (y_range > 0) x_range / y_range else 1
-        p <- p + coord_fixed(ratio = aspect / 1, xlim = c(x_start, x_end), ylim = c(y_start, y_end))
+        p <- p + coord_fixed(ratio = aspect, xlim = c(x_start, x_end), ylim = c(y_start, y_end))
       } else if (scale_parameter != "fixed" && (is.null(input$x_axis_scale) || input$x_axis_scale != "Log")) {
         p <- p + theme(aspect.ratio = (y_end - y_start) / (x_end - x_start))
       }
@@ -1102,12 +1136,15 @@ server <- function(input, output, session) {
     file_path <- input$cov_file$datapath
     file_name <- input$cov_file$name
     ext       <- tools::file_ext(file_name)
-    if (tolower(ext) == "csv") {
-      data <- read.table(file_path, header = TRUE, sep = ",", skip = 1)
-    } else {
-      data <- read.table(file_path, header = TRUE, skip = 1)
-    }
-    processCovFile(file_name, data)
+    sep       <- if (tolower(ext) == "csv") "," else ""
+    tryCatch(
+      {
+        skip <- header_skip(readLines(file_path, n = 1))
+        processCovFile(file_name, read_table_file(file_path, sep, skip))
+      }, error = function(msg) {
+        message(conditionMessage(msg))
+        showNotification(conditionMessage(msg), type = "error", duration = 10)
+      })
   })
 
   cov_plot <- reactive({
