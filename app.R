@@ -617,7 +617,7 @@ server <- function(input, output, session) {
           default_selection <- if (length(exact_matches) > 0) {
             exact_matches[1]
           } else if (length(close_matches) > 0) {
-            close_matches[1]
+            data_columns[which.min(distances)]
           } else {
             NULL
           }
