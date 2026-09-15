@@ -927,8 +927,20 @@ server <- function(input, output, session) {
       }
 
       if (!is.null(input$axis_scale) && input$axis_scale == "Log") {
-        if (any(table()[[x_var]] <= 0 | table()[[y_var]] <= 0))
-          showNotification("Zero or negative values detected. These points will be excluded from the log-scale plot.", type = "warning")
+        n_total    <- nrow(table())
+        n_excluded <- n_total - nrow(plot_data)
+        if (n_excluded > 0) {
+          showNotification(
+            sprintf("%d of %d observations (%.1f%%) excluded: zero, negative, or missing values cannot be shown on a log scale.",
+                    n_excluded, n_total, 100 * n_excluded / n_total),
+            type = "warning", duration = NULL
+          )
+          # Carried on the plot itself so the exclusion stays visible in downloaded figures
+          p <- p +
+            labs(subtitle = sprintf("%d of %d observations excluded (zero, negative, or missing values on log scale)",
+                                    n_excluded, n_total)) +
+            theme(plot.subtitle = element_text(hjust = 0.5, size = 12))
+        }
         if (nrow(plot_data) == 0) {
           showNotification("No positive values available for log scale after filtering.", type = "error")
           return(NULL)
@@ -1043,8 +1055,20 @@ server <- function(input, output, session) {
       }
 
       if (!is.null(input$x_axis_scale) && input$x_axis_scale == "Log") {
-        if (any(table()[[x_var]] <= 0))
-          showNotification("Zero or negative values detected in X-axis variable. These points will be excluded.", type = "warning")
+        n_total    <- nrow(table())
+        n_excluded <- n_total - nrow(plot_data)
+        if (n_excluded > 0) {
+          showNotification(
+            sprintf("%d of %d observations (%.1f%%) excluded: zero, negative, or missing X-axis values cannot be shown on a log scale.",
+                    n_excluded, n_total, 100 * n_excluded / n_total),
+            type = "warning", duration = NULL
+          )
+          # Carried on the plot itself so the exclusion stays visible in downloaded figures
+          p <- p +
+            labs(subtitle = sprintf("%d of %d observations excluded (zero, negative, or missing X values on log scale)",
+                                    n_excluded, n_total)) +
+            theme(plot.subtitle = element_text(hjust = 0.5, size = 12))
+        }
         if (nrow(plot_data) == 0) {
           showNotification("No positive values available for log scale after filtering.", type = "error")
           return(NULL)
@@ -1094,9 +1118,14 @@ server <- function(input, output, session) {
     h <- facet_plot_height()
     n_strat <- if (!is.null(input$select_stratify)) length(input$select_stratify) else 0
     top_margin <- 70 + max(0, n_strat - 1) * 20
+    # ggplotly drops the ggplot subtitle, so it is folded into the plotly title
+    plot_subtitle <- gof_plot()$labels$subtitle
+    title_text <- gof_plot()$labels$title
+    if (!is.null(plot_subtitle))
+      title_text <- paste0(title_text, "<br><span style='font-size:12px'>", plot_subtitle, "</span>")
     ggplotly(gof_plot(), tooltip = "text", height = h) %>%
       layout(
-        title  = list(text = gof_plot()$labels$title, font = list(size = 14)),
+        title  = list(text = title_text, font = list(size = 14)),
         margin = list(t = top_margin, b = 40)
       )
   })
