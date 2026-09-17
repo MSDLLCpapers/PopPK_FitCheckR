@@ -737,10 +737,10 @@ server <- function(input, output, session) {
     mapping <- column_mapping()
     if (any(sapply(mapping[c("PRED", "DV", "IPRED")], is.null))) return(NULL)
     obs_pred <-
-      ggplot(data = table(), aes_string(x = mapping$PRED, y = mapping$DV)) +
+      ggplot(data = table(), aes(x = .data[[mapping$PRED]], y = .data[[mapping$DV]])) +
       geom_point(shape = 1, color = "blue", size = 2) +
-      geom_abline(intercept = 0, slope = 1, size = 0.5) +
-      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, size = 0.7) +
+      geom_abline(intercept = 0, slope = 1, linewidth = 0.5) +
+      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, linewidth = 0.7) +
       theme_bw() + ylab("Observed") + xlab("Predicted") +
       ggtitle("Observed vs. Predicted") +
       theme(plot.title = element_text(hjust = 0.5)) +
@@ -750,10 +750,10 @@ server <- function(input, output, session) {
       ylim(min(table()[[mapping$PRED]], table()[[mapping$DV]]),
            max(table()[[mapping$PRED]], table()[[mapping$DV]]))
     obs_ipred <-
-      ggplot(data = table(), aes_string(x = mapping$IPRED, y = mapping$DV)) +
+      ggplot(data = table(), aes(x = .data[[mapping$IPRED]], y = .data[[mapping$DV]])) +
       geom_point(shape = 1, color = "blue", size = 2) +
-      geom_abline(intercept = 0, slope = 1, size = 0.5) +
-      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, size = 0.7) +
+      geom_abline(intercept = 0, slope = 1, linewidth = 0.5) +
+      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, linewidth = 0.7) +
       theme_bw() + ylab("Observed") + xlab("Individual Predicted") +
       ggtitle("Observed vs. Individual Predicted") +
       theme(plot.title = element_text(hjust = 0.5)) +
@@ -771,18 +771,18 @@ server <- function(input, output, session) {
     mapping <- column_mapping()
     if (any(sapply(mapping[c("PRED", "CWRES", "TIME")], is.null))) return(NULL)
     cwres_pred <-
-      ggplot(data = table(), aes_string(x = mapping$PRED, y = mapping$CWRES)) +
+      ggplot(data = table(), aes(x = .data[[mapping$PRED]], y = .data[[mapping$CWRES]])) +
       geom_point(shape = 1, color = "blue", size = 2) +
-      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, size = 0.7) +
-      geom_abline(intercept = 0, slope = 0, size = 0.5) +
+      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, linewidth = 0.7) +
+      geom_abline(intercept = 0, slope = 0, linewidth = 0.5) +
       theme_bw() + ylab("CWRES") + xlab("Predicted") +
       ggtitle("CWRES vs. Predicted") +
       theme(plot.title = element_text(hjust = 0.5))
     cwres_time <-
-      ggplot(data = table(), aes_string(x = mapping$TIME, y = mapping$CWRES)) +
+      ggplot(data = table(), aes(x = .data[[mapping$TIME]], y = .data[[mapping$CWRES]])) +
       geom_point(shape = 1, color = "blue", size = 2) +
-      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, size = 0.7) +
-      geom_abline(intercept = 0, slope = 0, size = 0.5) +
+      geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, linewidth = 0.7) +
+      geom_abline(intercept = 0, slope = 0, linewidth = 0.5) +
       theme_bw() + ylab("CWRES") + xlab("Time") +
       ggtitle("CWRES vs. Time") +
       theme(plot.title = element_text(hjust = 0.5))
@@ -884,18 +884,18 @@ server <- function(input, output, session) {
       if (!is.null(color_var)) {
         color_type <- get_variable_type(color_var, table()[[color_var]], input)
         if (color_type == "Categorical") {
-          p <- p + geom_point(aes_string(color = paste0("factor(", color_var, ")")),
+          p <- p + geom_point(aes(color = factor(.data[[color_var]])),
                               shape = 1, size = 2, stroke = 0.3) + labs(color = color_var)
         } else {
-          p <- p + geom_point(aes_string(color = color_var), shape = 1, size = 2, stroke = 0.3)
+          p <- p + geom_point(aes(color = .data[[color_var]]), shape = 1, size = 2, stroke = 0.3)
         }
       } else {
         p <- p + geom_point(shape = 1, size = 2, stroke = 0.3, color = "blue")
       }
 
       p <- p +
-        geom_abline(intercept = 0, slope = 1, size = 0.4) +
-        geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, size = 0.5,
+        geom_abline(intercept = 0, slope = 1, linewidth = 0.4) +
+        geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, linewidth = 0.5,
                     aes(text = "")) +
         theme_bw() +
         xlab(ifelse(input$x_axis_title != "", input$x_axis_title,
@@ -957,7 +957,7 @@ server <- function(input, output, session) {
         p <- p +
           scale_x_log10(labels = scales::label_number(), limits = c(log_x_start, log_x_end)) +
           scale_y_log10(labels = scales::label_number(), limits = c(log_y_start, log_y_end)) +
-          annotation_logticks(sides = "lb", size = 0.1) +
+          annotation_logticks(sides = "lb", linewidth = 0.1) +
           theme(panel.grid.minor = element_blank())
       }
 
@@ -1009,18 +1009,18 @@ server <- function(input, output, session) {
       if (!is.null(color_var)) {
         color_type <- get_variable_type(color_var, table()[[color_var]], input)
         if (color_type == "Categorical") {
-          p <- p + geom_point(aes_string(color = paste0("factor(", color_var, ")")),
+          p <- p + geom_point(aes(color = factor(.data[[color_var]])),
                               shape = 1, size = 2, stroke = 0.3) + labs(color = color_var)
         } else {
-          p <- p + geom_point(aes_string(color = color_var), shape = 1, size = 2, stroke = 0.3)
+          p <- p + geom_point(aes(color = .data[[color_var]]), shape = 1, size = 2, stroke = 0.3)
         }
       } else {
         p <- p + geom_point(shape = 1, size = 2, stroke = 0.3, color = "blue")
       }
 
       p <- p +
-        geom_abline(intercept = 0, slope = 0, size = 0.4) +
-        geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, size = 0.5,
+        geom_abline(intercept = 0, slope = 0, linewidth = 0.4) +
+        geom_smooth(method = "loess", span = 0.75, color = "red", se = FALSE, linewidth = 0.5,
                     aes(text = "")) +
         theme_bw() +
         xlab(ifelse(input$x_axis_title != "", input$x_axis_title,
@@ -1082,7 +1082,7 @@ server <- function(input, output, session) {
         }
         p <- p +
           scale_x_log10(labels = scales::label_number(), limits = c(log_x_start, log_x_end)) +
-          annotation_logticks(sides = "b", size = 0.1)
+          annotation_logticks(sides = "b", linewidth = 0.1)
       }
 
       p
@@ -1180,29 +1180,31 @@ server <- function(input, output, session) {
     req(input$select_cov_x, input$select_cov_y)
     combinations <- expand.grid(x = input$select_cov_x, y = input$select_cov_y,
                                 stringsAsFactors = FALSE)
-    plot_list <- list()
-    for (i in seq_len(nrow(combinations))) {
+    # lapply, not a for loop: aes() quosures resolve lazily, so each plot needs its
+    # own environment or every panel would render the last variable pair.
+    plot_list <- lapply(seq_len(nrow(combinations)), function(i) {
+      x_var <- combinations$x[i]
+      y_var <- combinations$y[i]
       if (input$plot_type == "Line plot") {
         p <- ggplot(data = cov_data(),
-                    aes_string(x = combinations$x[i], y = combinations$y[i])) +
+                    aes(x = .data[[x_var]], y = .data[[y_var]])) +
           geom_point(color = "blue") + theme_bw() +
-          xlab(combinations$x[i]) + ylab(combinations$y[i]) +
+          xlab(x_var) + ylab(y_var) +
           geom_smooth(method = input$regression_type, se = input$display_ci)
         if (input$regression_type == "lm") {
           p <- p + stat_poly_eq(
-            aes_string(label = "paste(..eq.label.., ..rr.label.., sep = '~~~')"),
+            aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~")),
             formula = y ~ x, parse = TRUE
           )
         }
+        p
       } else {
-        p <- ggplot(data = cov_data(),
-                    aes_string(x = paste0("factor(", combinations$x[i], ")"),
-                               y = combinations$y[i])) +
+        ggplot(data = cov_data(),
+               aes(x = factor(.data[[x_var]]), y = .data[[y_var]])) +
           geom_boxplot() + geom_jitter(color = "blue", width = 0.1, size = 1.5, alpha = 0.6) + theme_bw() +
-          xlab(combinations$x[i]) + ylab(combinations$y[i])
+          xlab(x_var) + ylab(y_var)
       }
-      plot_list[[i]] <- p
-    }
+    })
     grid.arrange(grobs = plot_list, ncol = 2)
   })
 
