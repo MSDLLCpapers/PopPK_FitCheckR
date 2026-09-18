@@ -35,4 +35,4 @@ the R license (https://www.r-project.org/Licenses/):
   * tools
   * utils
 
-R itself - https://www.r-project.org/Licenses/
+R - https://www.r-project.org/Licenses/
