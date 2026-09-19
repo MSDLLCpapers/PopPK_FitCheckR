@@ -231,8 +231,8 @@ ui <- fluidPage(
                   <td style="padding:7px 10px;"><code>lm</code> (linear model) or <code>loess</code> (locally estimated smoothing).</td>
                 </tr>
                 <tr>
-                  <td style="padding:7px 10px; font-weight:600;">Display standard error <span style="font-size:11px; font-weight:400; color:#888;">(line plot only)</span></td>
-                  <td style="padding:7px 10px;">Option to show standard error band around the regression line.</td>
+                  <td style="padding:7px 10px; font-weight:600;">Display 95% CI <span style="font-size:11px; font-weight:400; color:#888;">(line plot only)</span></td>
+                  <td style="padding:7px 10px;">Option to show the 95% confidence band around the regression line.</td>
                 </tr>
               </tbody>
             </table>
@@ -1147,8 +1147,15 @@ server <- function(input, output, session) {
   cov_data <- reactive({
     req(cov_unfiltered())
     df <- cov_unfiltered()
-    if (isTRUE(input$dedup_by_id) && "ID" %in% names(df)) {
-      df <- dplyr::distinct(df, ID, .keep_all = TRUE)
+    if (isTRUE(input$dedup_by_id)) {
+      # This tab has no column mapping, so the ID column is matched by name
+      id_col <- names(df)[match("id", tolower(names(df)))]
+      if (is.na(id_col)) {
+        showNotification("No 'ID' column found in the uploaded file; deduplication was not applied.",
+                         type = "warning", duration = 10)
+      } else {
+        df <- df[!duplicated(df[[id_col]]), , drop = FALSE]
+      }
     }
     df
   })
@@ -1190,7 +1197,7 @@ server <- function(input, output, session) {
                     aes(x = .data[[x_var]], y = .data[[y_var]])) +
           geom_point(color = "blue") + theme_bw() +
           xlab(x_var) + ylab(y_var) +
-          geom_smooth(method = input$regression_type, se = input$display_ci)
+          geom_smooth(method = input$regression_type, se = input$display_ci, level = 0.95)
         if (input$regression_type == "lm") {
           p <- p + stat_poly_eq(
             aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~")),
