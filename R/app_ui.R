@@ -190,8 +190,8 @@ ui_instructions <- function() {
                   <td style="padding:7px 10px;"><code>lm</code> (linear model) or <code>loess</code> (locally estimated smoothing).</td>
                 </tr>
                 <tr>
-                  <td style="padding:7px 10px; font-weight:600;">Display standard error <span style="font-size:11px; font-weight:400; color:#888;">(line plot only)</span></td>
-                  <td style="padding:7px 10px;">Option to show standard error band around the regression line.</td>
+                  <td style="padding:7px 10px; font-weight:600;">Display 95% CI <span style="font-size:11px; font-weight:400; color:#888;">(line plot only)</span></td>
+                  <td style="padding:7px 10px;">Option to show the 95% confidence band around the regression line.</td>
                 </tr>
               </tbody>
             </table>

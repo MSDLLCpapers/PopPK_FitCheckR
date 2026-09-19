@@ -315,7 +315,7 @@ correlation_plots <- function(data, x_vars, y_vars, plot_type, regression_type, 
       p <- ggplot(data = data, aes(x = .data[[x_var]], y = .data[[y_var]])) +
         geom_point(color = "blue") + theme_bw() +
         xlab(x_var) + ylab(y_var) +
-        geom_smooth(method = regression_type, se = display_ci)
+        geom_smooth(method = regression_type, se = display_ci, level = 0.95)
       if (regression_type == "lm") {
         p <- p + stat_poly_eq(
           aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~")),
