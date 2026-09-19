@@ -401,11 +401,11 @@ ui <- fluidPage(
               ),
               fluidRow(
                 column(3, conditionalPanel(
-                  condition = "input.free_scale_xy == false || input.free_scale_x == false",
+                  condition = "input.free_scale_xy != true && input.free_scale_x != true",
                   numericInput("x_start", "X axis start value", value = "")
                 )),
                 column(3, conditionalPanel(
-                  condition = "input.free_scale_xy == false || input.free_scale_x == false",
+                  condition = "input.free_scale_xy != true && input.free_scale_x != true",
                   numericInput("x_end", "X axis end value", value = "")
                 )),
                 column(3, conditionalPanel(
