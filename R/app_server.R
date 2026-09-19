@@ -300,8 +300,15 @@ app_server <- function(input, output, session) {
   cov_data <- reactive({
     req(cov_unfiltered())
     df <- cov_unfiltered()
-    if (isTRUE(input$dedup_by_id) && "ID" %in% names(df)) {
-      df <- df[!duplicated(df$ID), , drop = FALSE]
+    if (isTRUE(input$dedup_by_id)) {
+      # This tab has no column mapping, so the ID column is matched by name
+      id_col <- names(df)[match("id", tolower(names(df)))]
+      if (is.na(id_col)) {
+        showNotification("No 'ID' column found in the uploaded file; deduplication was not applied.",
+                         type = "warning", duration = 10)
+      } else {
+        df <- df[!duplicated(df[[id_col]]), , drop = FALSE]
+      }
     }
     df
   })
