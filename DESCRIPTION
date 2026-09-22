@@ -1,6 +1,6 @@
 Package: PopPKFitCheckR
 Title: An interactive application for population pharmacokinetic model diagnostics
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: c(
     person(given = "Ruilian",
            family = "Zhang",
