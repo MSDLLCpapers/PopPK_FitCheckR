@@ -1,6 +1,6 @@
 # PopPK FitCheckR
 
-PopPK FitCheckR is an R package containing a Shiny application for interactive goodness-of-fit diagnostics and correlation plots from NONMEM output table files.
+PopPK FitCheckR is an R package providing a Shiny application for interactive goodness-of-fit diagnostics and correlation plots in population pharmacokinetic (popPK) modeling, built to work directly with NONMEM output tables.
 
 ## Install
 
